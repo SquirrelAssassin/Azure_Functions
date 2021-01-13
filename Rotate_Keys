@@ -1,7 +1,7 @@
 # Note: The _master key is not returned on a GET request
 # Note: You can still set the _master password
 # Note: The master key is exposed under the reserved name _master and DELETE is not supported
-# Note: There are two lines below for URL uncommen the one for functions if your using function keys or the host if your using the host keys
+# Note: There are two lines below for URL uncomment the one for functions if your using function keys or the host if your using the host keys
 
 $ResourceGroupName = 'test-function-resourcegroup'
 $functionappname = 'FunctionAPp'
