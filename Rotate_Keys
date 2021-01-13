@@ -1,0 +1,45 @@
+# Note: The _master key is not returned on a GET request
+# Note: You can still set the _master password
+# Note: The master key is exposed under the reserved name _master and DELETE is not supported
+# Note: There are two lines below for URL uncommen the one for functions if your using function keys or the host if your using the host keys
+
+$ResourceGroupName = 'test-function-resourcegroup'
+$functionappname = 'FunctionAPp'
+$function = 'httpTrigger1'
+$keyName = '_master'
+$keyValue = 'my-secret-value'
+
+# Note to uncomment the string your want ... if your updating the host use the /admin/host URL if your updating a function ... use the /admin/functions URL
+$URL = "https://$functionappname.azurewebsites.net/admin/host/keys"
+#$URL = "https://$functionappname.azurewebsites.net/admin/functions/$function/keys"
+
+function Get-AzureFunctionsAccessToken{
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]
+        $ResourceGroupName,
+        [Parameter(Mandatory = $true)]
+        [string]
+        $FunctionAppName
+    )
+    $publishingCredentials = Invoke-AzResourceAction  -ResourceGroupName $ResourceGroupName -ResourceType 'Microsoft.Web/sites/config' -ResourceName ('{0}/publishingcredentials' -f $FunctionAppName) -Action list -ApiVersion 2019-08-01 -Force
+    $base64Credentials = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(('{0}:{1}' -f $publishingCredentials.Properties.PublishingUserName, $publishingCredentials.Properties.PublishingPassword)))
+    Invoke-RestMethod -Uri ('https://{0}.scm.azurewebsites.net/api/functions/admin/token' -f $FunctionAppName) -Headers @{ Authorization = ('Basic {0}' -f $base64Credentials) }
+}
+# Run the function to get the token
+$jwtToken = Get-AzureFunctionsAccessToken -ResourceGroupName $ResourceGroupName -FunctionAppName $functionname
+
+# Add key with random password
+Invoke-RestMethod -Uri "$URL/$keyvaule" -Headers @{Authorization = ("Bearer {0}" -f $jwtToken) } -Method Post
+
+# Add key with specific password
+Invoke-RestMethod -Uri "$URL/$keyName" -Headers @{Authorization = ("Bearer {0}" -f $jwtToken) } -Body ( @{ 'name' = $keyName; 'value' = $keyValue } | ConvertTo-Json) -ContentType 'application/json' -Method PUT
+
+# Get Keys
+Invoke-RestMethod -Uri $URL -Headers @{Authorization = ("Bearer {0}" -f $jwtToken) } -Method GET | Select-Object -ExpandProperty keys
+
+# Get specific key
+Invoke-RestMethod -Uri "$URL/$keyName" -Headers @{Authorization = ("Bearer {0}" -f $jwtToken) } -Method GET
+
+# Delete specific key
+Invoke-RestMethod -Uri "$URL/$keyName" -Headers @{Authorization = ("Bearer {0}" -f $jwtToken) } -Method DELETE
